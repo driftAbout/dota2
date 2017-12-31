@@ -8,8 +8,21 @@ var app = app || {};
   heroView.appendHeroView = () => {
     app.Hero.all.forEach((hero, i) => {
       hero.arrayIndex = i;
+      hero.star_rating = 0;  //default setting to make sort work correctly
       $('#hero-view-list').append(hero.toHtml());
+      heroView.setUserHeroRating(hero);
     })
+  }
+
+
+  heroView.setUserHeroRating = (hero_data) => {
+    let rating_prop = hero_data.name.replace(/\s/g, '_').toLowerCase()
+    if (!localStorage.ratings) return;
+    let hero_ratings = JSON.parse(localStorage.ratings)[rating_prop] || 0;
+    if (!hero_ratings) return;
+    let hero_tile = $(`li[data-hero-id="${hero_data.hero_id}"]`);
+    hero_tile.find('.icon-star-empty').eq(hero_ratings - 1).click();
+    app.Hero.all[hero_data.arrayIndex].star_rating = hero_ratings;
   }
 
   //helper function to set pushState
@@ -46,6 +59,33 @@ var app = app || {};
     heroView.appendHeroView();
   }
 
+  $('#hero-view-list').on('click', '.user-hero-rating span', setStarClass)
+
+ 
+  function setStarClass() {
+    if ($(this).hasClass('icon-star-empty')){
+      $(this).removeClass('icon-star-empty').addClass('icon-star-full');
+      $(this).prevAll().removeClass('icon-star-empty').addClass('icon-star-full')
+    } else {
+      if ($(this).next('.icon-star-empty').length) $(this).removeClass('icon-star-full').addClass('icon-star-empty');
+    }
+    $(this).nextAll().removeClass('icon-star-full').addClass('icon-star-empty')
+    setRatingsStorage(this)
+  }
+  
+  function setRatingsStorage(clicked_span){
+    let starRating = $(clicked_span).parent().find('.icon-star-full').length;
+    let current_hero_index = $(clicked_span).parents('li').attr('data-hero-index')
+    let current_hero = app.Hero.all[current_hero_index];
+    let hero_name_prop = current_hero.name.replace(/\s/g, '_').toLowerCase();
+    let user_hero_ratings = localStorage.ratings ? JSON.parse(localStorage.ratings) : {};
+    user_hero_ratings[hero_name_prop] = starRating;
+    localStorage.ratings = JSON.stringify(user_hero_ratings);
+    app.Hero.all[current_hero_index].star_rating = starRating;
+  }
+
+  
+
   module.heroView = heroView
 
   ///*****  event handlers ********///
@@ -60,8 +100,9 @@ var app = app || {};
   })
 
   /************** hero tile click event ********************/
-  $('#hero-view-list').on('click', 'li', function() {
-    let idx = $(this).attr('data-hero-index');
+  //$('#hero-view-list').on('click', 'li', function() {
+  $('#hero-view-list').on('click', 'img', function() {
+    let idx = $(this).parents('li').attr('data-hero-index');
     let hero = app.Hero.all[idx];
     let statURL = `/heroes-stat/${hero.name.split(' ').join('-')}`;
     app.heroView.setURl(idx , statURL, 'initStatsPage');
@@ -97,7 +138,7 @@ $(function() {
   //set initial pushState
   app.heroView.setURl('', '/', 'homeNavItem' )
 
-  //fetch  etag from data basse then intit index page
+  //fetch  etag from data base then init index page
   $.get('/etags').then(etag => {
     app.etag = etag
     app.heroView.initIndexPage()

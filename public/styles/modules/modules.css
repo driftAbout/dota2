@@ -168,6 +168,11 @@ th, td {
   clear: both;
 }
 
+.user-hero-rating {
+  padding: 10px 20px;
+  text-align: left;
+}
+
 /* Desktop Styling */
 @media screen and (min-width: 780px) {
 
